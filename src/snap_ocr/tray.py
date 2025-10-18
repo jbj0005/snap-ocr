@@ -44,7 +44,7 @@ class TrayManager:
                     pystray.MenuItem("FancyZones", self._wrap(lambda: self.app.set_capture_mode("fancyzones")), checked=lambda _: getattr(self.app, "capture_mode", "full") == "fancyzones"),
                 ),
             ),
-            pystray.MenuItem("Pick Region…", self._wrap(self.app.pick_region)),
+            pystray.MenuItem("Pick Region…", self._wrap(self.app.pick_region, run_async=False)),
             pystray.MenuItem(
                 "Consecutive Mode",
                 self._wrap(self.app.toggle_consecutive_mode),
@@ -60,11 +60,12 @@ class TrayManager:
             pystray.MenuItem("Quit", self._wrap(self.app.quit)),
         )
 
-    def _wrap(self, func: Callable[[], None]) -> Callable:
+    def _wrap(self, func: Callable[[], None], run_async: bool = True) -> Callable:
         def _inner(icon: pystray.Icon, item: Optional[pystray.MenuItem] = None) -> None:  # type: ignore[type-arg]
-            # Run tray actions in a separate thread to avoid blocking the menu
-            t = threading.Thread(target=func, daemon=True)
-            t.start()
+            if run_async:
+                threading.Thread(target=func, daemon=True).start()
+            else:
+                func()
         return _inner
 
     def run(self) -> None:
