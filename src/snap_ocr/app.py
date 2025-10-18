@@ -17,8 +17,9 @@ from .ocr import perform_ocr, build_tesseract_missing_message, build_ocr_failed_
 from .paths import (
     ensure_dir,
     get_log_file_path,
-    open_file,
+    get_config_path,
     open_in_file_manager,
+    open_in_text_editor,
     get_logs_dir,
 )
 from .screenshot import capture_full_screenshot, capture_region
@@ -113,7 +114,7 @@ class App:
 
     def open_config_file(self) -> None:
         path = get_config_path()
-        open_file(path)
+        open_in_text_editor(path)
 
     def reload_config(self) -> None:
         try:
