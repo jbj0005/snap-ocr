@@ -1,15 +1,69 @@
 from __future__ import annotations
 
+import os
 import threading
+from pathlib import Path
 from typing import Callable, Optional
 
 from PIL import Image, ImageDraw, ImageFont
 import pystray
 
 
+def _candidate_icon_paths() -> list[Path]:
+    candidates: list[Path] = []
+    env_path = os.getenv("SNAP_OCR_ICON")
+    if env_path:
+        candidates.append(Path(env_path).expanduser())
+    try:
+        from importlib import resources
+
+        resource_path = resources.files("snap_ocr") / "assets" / "icon.png"  # type: ignore[attr-defined]
+        candidates.append(Path(resource_path))
+    except Exception:
+        pass
+    here = Path(__file__).resolve()
+    candidates.append(here.parent / "assets" / "icon.png")
+    candidates.append(here.parents[1] / "assets" / "icon.png")
+    candidates.append(Path.cwd() / "assets" / "icon.png")
+    unique: list[Path] = []
+    seen = set()
+    for candidate in candidates:
+        try:
+            key = candidate.resolve()
+        except Exception:
+            key = candidate
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(candidate)
+    return unique
+
+
+def _load_custom_icon(size: int) -> Optional[Image.Image]:
+    for candidate in _candidate_icon_paths():
+        try:
+            if candidate.is_file():
+                with candidate.open("rb") as fh:
+                    img = Image.open(fh).convert("RGBA")
+            else:
+                continue
+        except Exception:
+            continue
+        else:
+            if img.size != (size, size):
+                img = img.resize((size, size), Image.LANCZOS)
+            return img
+    return None
+
+
 def _make_icon(size: int = 32) -> Image.Image:
+    custom = _load_custom_icon(size)
+    if custom is not None:
+        return custom
+
     img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
+
     # Simple monochrome circle with S glyph
     draw.ellipse((1, 1, size - 2, size - 2), fill=(30, 30, 30, 255))
     # Draw S letter; fallback to default PIL font

@@ -31,5 +31,8 @@ where = ["src"]
 [tool.setuptools]
 package-dir = {"" = "src"}
 
+[tool.setuptools.package-data]
+snap_ocr = ["assets/icon.png"]
+
 [project.entry-points."gui_scripts"]
 snap-ocr = "snap_ocr.__main__:main"

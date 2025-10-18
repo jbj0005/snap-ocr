@@ -34,6 +34,10 @@ python -m snap_ocr
 - Edit the file to change the hotkey (`hotkey`), output folders, OCR languages, or enable `consecutive_mode` to overwrite the same filename on every capture.
 - Use the tray menu’s “Reload Config” item or restart the app to apply edits.
 
+## Customisation
+- Place a PNG icon at `assets/icon.png` (or set the `SNAP_OCR_ICON` env var) and the tray will use it automatically.
+- Set `SNAP_OCR_ICON` to an absolute path if you keep the icon elsewhere (useful when packaging).
+
 ## Tray Menu Highlights
 - Take Screenshot Now – trigger immediately without the hotkey.
 - Capture Mode – choose full screen, saved region, or FancyZones (Windows PowerToys).
