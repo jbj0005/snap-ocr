@@ -24,6 +24,11 @@ python -m snap_ocr
 ```
 - Windows PowerShell: ``py -3.10 -m venv .venv; .\.venv\Scripts\Activate.ps1; python -m pip install -r requirements.txt``.
 
+## Command-line Shortcuts
+- `snap-ocr --capture-once` grabs one screenshot + OCR and exits (no tray).
+- `snap-ocr --show-config-path` prints the active `config.yaml` path.
+- `snap-ocr --open-config` opens `config.yaml` in Finder/File Explorer for quick edits.
+
 ## Configuration
 - First run creates `config.yaml` in the user config directory (`~/Library/Application Support/snap-ocr/config.yaml` on macOS, `%APPDATA%\snap-ocr\config.yaml` on Windows).
 - Edit the file to change the hotkey (`hotkey`), output folders, OCR languages, or enable `consecutive_mode` to overwrite the same filename on every capture.

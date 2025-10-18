@@ -102,14 +102,80 @@ Acceptance Tests (Manual)
 - Debounce prevents duplicates from rapid presses (500 ms default).
 
 """
-from .app import App
+from __future__ import annotations
+
+import argparse
+import sys
+import time
+from typing import Optional, Sequence
+
+from .app import App, Job
+from .config import load_or_create_config, save_config_if_first_run
+from .paths import get_config_path, open_in_file_manager
 
 
-def main() -> None:
+def _parse_args(argv: Optional[Sequence[str]]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Snap OCR tray utility")
+    parser.add_argument(
+        "--capture-once",
+        action="store_true",
+        help="Take a capture immediately and exit (no tray).",
+    )
+    parser.add_argument(
+        "--show-config-path",
+        action="store_true",
+        help="Print the active config.yaml path and exit.",
+    )
+    parser.add_argument(
+        "--open-config",
+        action="store_true",
+        help="Open config.yaml in the default file manager.",
+    )
+    args = parser.parse_args(argv)
+    selected = sum(bool(flag) for flag in (args.capture_once, args.show_config_path, args.open_config))
+    if selected > 1:
+        parser.error("Options are mutually exclusive; choose only one.")
+    return args
+
+
+def _ensure_config() -> str:
+    cfg = load_or_create_config()
+    save_config_if_first_run(cfg)
+    return get_config_path()
+
+
+def _capture_once() -> int:
+    app = App()
+    try:
+        result = app._process_job(Job(reason="cli", requested_at=time.monotonic()))
+    finally:
+        try:
+            app.hotkey.stop()
+        except Exception:
+            pass
+    if result:
+        img_path, txt_path = result
+        print(f"Saved image: {img_path}")
+        print(f"Saved text:  {txt_path}")
+        return 0
+    print("Capture failed; see the log for details.", file=sys.stderr)
+    return 1
+
+
+def main(argv: Optional[Sequence[str]] = None) -> None:
+    args = _parse_args(argv)
+    if args.show_config_path:
+        print(_ensure_config())
+        return
+    if args.open_config:
+        open_in_file_manager(_ensure_config())
+        return
+    if args.capture_once:
+        raise SystemExit(_capture_once())
+
     app = App()
     app.run()
 
 
 if __name__ == "__main__":
     main()
-

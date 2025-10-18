@@ -185,7 +185,7 @@ class App:
                     SnapOcrError(ErrorCode.OTHER, f"Unexpected error: {e}", e)
                 )
 
-    def _process_job(self, job: Job) -> None:
+    def _process_job(self, job: Job) -> Optional[Tuple[str, str]]:
         logger = self.logger
         cfg = self.config
 
@@ -281,6 +281,8 @@ class App:
         logger.info("Saved: %s and %s", img_path, txt_path)
         if self.config.notify_on_success:
             self._notify("Snap OCR", f"Saved screenshot + OCR:\n{img_path}\n{txt_path}")
+
+        return img_path, txt_path
 
     def _record_error(self, err: SnapOcrError) -> None:
         # Human-readable, actionable messages
