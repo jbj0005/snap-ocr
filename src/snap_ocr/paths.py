@@ -59,24 +59,45 @@ def ensure_dir(path: str) -> None:
     Path(path).mkdir(parents=True, exist_ok=True)
 
 
-def open_in_file_manager(path: str, reveal: bool = False) -> None:
+def open_in_text_editor(path: str) -> None:
+    """
+    Open a file in the user's default text editor, creating it first if needed.
+    On macOS this uses `open -t` so Launch Services routes it to the default editor
+    (TextEdit, VS Code, etc.) instead of Finder. On Linux it prefers $VISUAL/$EDITOR,
+    falling back to xdg-open. On Windows it uses os.startfile.
+    """
+    p = Path(path)
+    # Ensure parent exists and the file exists so OS launchers don't silently fail.
+    p.parent.mkdir(parents=True, exist_ok=True)
+    if not p.exists():
+        p.touch()
     if sys.platform == "win32":
-        if reveal and os.path.isfile(path):
-            subprocess.run(["explorer", "/select,", path.replace("/", "\\")], check=False)
-        else:
-            os.startfile(path)  # type: ignore[attr-defined]
+        os.startfile(str(p))  # type: ignore[attr-defined]
     elif sys.platform == "darwin":
-        if reveal and os.path.exists(path):
-            result = subprocess.run(["open", "-R", path], check=False)
-            if result.returncode == 0:
-                return
-        subprocess.run(["open", path], check=False)
+        # -t = open in the default text editor
+        subprocess.run(["open", "-t", str(p)], check=False)
     else:
-        target = path
-        if reveal and os.path.isfile(path):
-            target = os.path.dirname(path) or "."
-        subprocess.run(["xdg-open", target], check=False)
+        # Prefer a real editor if the environment defines one, else fall back.
+        editor = os.environ.get("VISUAL") or os.environ.get("EDITOR")
+        if editor:
+            subprocess.run([editor, str(p)], check=False)
+        else:
+            subprocess.run(["xdg-open", str(p)], check=False)
 
+
+def open_in_file_manager(path: str) -> None:
+    p = Path(path)
+    # If this looks like a file path (either it exists as a file or has an extension),
+    # open it in the default text editor. Otherwise treat it as a directory.
+    if (p.exists() and p.is_file()) or (p.suffix and not p.is_dir()):
+        open_in_text_editor(str(p))
+        return
+    if sys.platform == "win32":
+        os.startfile(str(p))  # type: ignore[attr-defined]
+    elif sys.platform == "darwin":
+        subprocess.run(["open", str(p)], check=False)
+    else:
+        subprocess.run(["xdg-open", str(p)], check=False)
 
 
 def open_file(path: str) -> None:
