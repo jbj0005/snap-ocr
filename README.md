@@ -55,3 +55,9 @@ python -m snap_ocr
 ## Troubleshooting
 - macOS permissions: grant Screen Recording, Accessibility, and Input Monitoring to Terminal/Python if screenshots are black or the hotkey does not fire.
 - Ensure Tesseract OCR is installed (`brew install tesseract` on macOS, UB Mannheim installer on Windows) or set `tesseract_cmd` in `config.yaml`.
+
+## Packaging (macOS)
+1. Install PyInstaller if you haven’t: `pipx install pyinstaller` or `python3 -m pip install pyinstaller`.
+2. Run `scripts/build_mac_app.sh` to produce `dist/Snap OCR.app` (the script converts `assets/icon.png` to `.icns` automatically if needed).
+3. Edit `scripts/sign_and_notarize.sh` with your Developer ID identity and notarytool profile, then run it to sign, notarize, and staple the bundle.
+4. Launch the notarized `.app` and allow the permission prompts. The bootstrap step triggers Screen Recording and Accessibility dialogs on first run.

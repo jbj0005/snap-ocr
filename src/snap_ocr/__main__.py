@@ -164,6 +164,7 @@ def _capture_once() -> int:
 
 def main(argv: Optional[Sequence[str]] = None) -> None:
     args = _parse_args(argv)
+    bootstrap_permissions()
     if args.show_config_path:
         print(_ensure_config())
         return
