@@ -5,7 +5,7 @@ import threading
 from pathlib import Path
 from typing import Callable, Optional
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 import pystray
 
 
@@ -40,6 +40,12 @@ def _candidate_icon_paths() -> list[Path]:
 
 
 def _load_custom_icon(size: int) -> Optional[Image.Image]:
+    pad_ratio_env = os.getenv("SNAP_OCR_ICON_PAD")
+    try:
+        pad_ratio = float(pad_ratio_env) if pad_ratio_env is not None else 0.05
+    except ValueError:
+        pad_ratio = 0.05
+
     for candidate in _candidate_icon_paths():
         try:
             if candidate.is_file():
@@ -50,8 +56,17 @@ def _load_custom_icon(size: int) -> Optional[Image.Image]:
         except Exception:
             continue
         else:
-            if img.size != (size, size):
-                img = img.resize((size, size), Image.LANCZOS)
+            bbox = img.getbbox()
+            if bbox:
+                img = img.crop(bbox)
+            if pad_ratio > 0:
+                w, h = img.size
+                pad_w = max(1, int(w * pad_ratio))
+                pad_h = max(1, int(h * pad_ratio))
+                canvas = Image.new("RGBA", (w + pad_w * 2, h + pad_h * 2), (0, 0, 0, 0))
+                canvas.paste(img, (pad_w, pad_h))
+                img = canvas
+            img = ImageOps.fit(img, (size, size), method=Image.LANCZOS, centering=(0.5, 0.5))
             return img
     return None
 
