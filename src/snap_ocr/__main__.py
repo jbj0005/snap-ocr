@@ -19,7 +19,7 @@ Key Features
 
 Installation (Python 3.10+)
 1) Create and activate a virtual environment (recommended)
-   - Windows (PowerShell): `py -3.10 -m venv .venv && .\.venv\Scripts\Activate.ps1`
+   - Windows (PowerShell): `py -3.10 -m venv .venv && .\\.venv\\Scripts\\Activate.ps1`
    - macOS: `python3.10 -m venv .venv && source .venv/bin/activate`
 2) Install dependencies
    - `pip install -r requirements.txt`

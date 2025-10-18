@@ -4,8 +4,45 @@ Tray hotkey background screenshot + OCR utility for macOS and Windows.
 
 For full documentation, see the embedded README in `src/snap_ocr/__main__.py`.
 
-## Quick Start
-- Create venv: `python -m venv .venv`
-- Install: `.\\.venv\\Scripts\\python.exe -m pip install -r requirements.txt`
-- Run: `.\\.venv\\Scripts\\python.exe -m snap_ocr`
+## Installation Options
 
+### pipx (recommended)
+```bash
+pipx install .
+snap-ocr  # launches the tray app
+```
+- Pipx keeps the tool isolated in its own virtualenv and adds a `snap-ocr` command to your `PATH`.
+- macOS: after launch, look for the tray icon (dark circle with an “S”) in the menu bar and click it to access controls.
+
+### From source (virtualenv)
+```bash
+python -m venv .venv
+source .venv/bin/activate        # macOS/Linux
+python -m pip install -r requirements.txt
+python -m pip install -e .
+python -m snap_ocr
+```
+- Windows PowerShell: ``py -3.10 -m venv .venv; .\.venv\Scripts\Activate.ps1; python -m pip install -r requirements.txt``.
+
+## Configuration
+- First run creates `config.yaml` in the user config directory (`~/Library/Application Support/snap-ocr/config.yaml` on macOS, `%APPDATA%\snap-ocr\config.yaml` on Windows).
+- Edit the file to change the hotkey (`hotkey`), output folders, OCR languages, or enable `consecutive_mode` to overwrite the same filename on every capture.
+- Use the tray menu’s “Reload Config” item or restart the app to apply edits.
+
+## Tray Menu Highlights
+- Take Screenshot Now – trigger immediately without the hotkey.
+- Capture Mode – choose full screen, saved region, or FancyZones (Windows PowerToys).
+- Consecutive Mode – toggles overwrite behaviour.
+- Open Images/Text Folder – jump straight to output locations.
+- Reload Config / View Log File / Quit.
+
+## Auto-start at Login (macOS)
+- Create `~/Library/LaunchAgents/com.brandon.snap-ocr.plist` pointing to the pipx interpreter:
+  ```
+  /Users/brandon/.local/pipx/venvs/snap-ocr/bin/python -m snap_ocr
+  ```
+- Load it once with `launchctl load ~/Library/LaunchAgents/com.brandon.snap-ocr.plist`. The tray app will now start automatically each login. Adjust the path if your username differs.
+
+## Troubleshooting
+- macOS permissions: grant Screen Recording, Accessibility, and Input Monitoring to Terminal/Python if screenshots are black or the hotkey does not fire.
+- Ensure Tesseract OCR is installed (`brew install tesseract` on macOS, UB Mannheim installer on Windows) or set `tesseract_cmd` in `config.yaml`.

@@ -1,9 +1,30 @@
 from __future__ import annotations
 
+import sys
 import threading
 from typing import Callable, Optional
 
 from pynput import keyboard
+
+if sys.platform == "darwin":
+    try:
+        from pynput._util import AbstractListener
+        import pynput._util.darwin as _darwin_util
+    except Exception:
+        _darwin_util = None
+    else:
+        if _darwin_util and not getattr(_darwin_util, "_snap_ocr_thread_handle_patch", False):
+
+            @AbstractListener._emitter
+            def _patched_handler(self, proxy, event_type, event, refcon):
+                type(self)._handle(self, proxy, event_type, event, refcon)
+                if self._intercept is not None:
+                    return self._intercept(event_type, event)
+                if self.suppress:
+                    return None
+
+            _darwin_util.ListenerMixin._handler = _patched_handler
+            _darwin_util._snap_ocr_thread_handle_patch = True
 
 
 class HotkeyManager:

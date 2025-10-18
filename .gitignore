@@ -20,4 +20,4 @@ Thumbs.db
 
 # Logs (app writes outside repo; this is defensive)
 logs/
-
+src/snap_ocr.egg-info/

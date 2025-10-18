@@ -145,5 +145,5 @@ notify_on_success: true
 debounce_ms: 500
 log_level: INFO
 # Optional: set a full path to tesseract executable if not on PATH
-# tesseract_cmd: "C:\\\Program Files\\\\Tesseract-OCR\\\\tesseract.exe"
+# tesseract_cmd: "C:/Program Files/Tesseract-OCR/tesseract.exe"
 """.format(default_images_dir(), default_text_dir())
