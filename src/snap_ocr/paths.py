@@ -59,11 +59,21 @@ def ensure_dir(path: str) -> None:
     Path(path).mkdir(parents=True, exist_ok=True)
 
 
-def open_in_file_manager(path: str) -> None:
+def open_in_file_manager(path: str, reveal: bool = False) -> None:
     if sys.platform == "win32":
-        os.startfile(path)  # type: ignore[attr-defined]
+        if reveal and os.path.isfile(path):
+            subprocess.run(["explorer", "/select,", path.replace("/", "\\")], check=False)
+        else:
+            os.startfile(path)  # type: ignore[attr-defined]
     elif sys.platform == "darwin":
+        if reveal and os.path.exists(path):
+            result = subprocess.run(["open", "-R", path], check=False)
+            if result.returncode == 0:
+                return
         subprocess.run(["open", path], check=False)
     else:
-        subprocess.run(["xdg-open", path], check=False)
+        target = path
+        if reveal and os.path.isfile(path):
+            target = os.path.dirname(path) or "."
+        subprocess.run(["xdg-open", target], check=False)
 

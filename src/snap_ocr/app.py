@@ -112,7 +112,7 @@ class App:
 
     def open_config_file(self) -> None:
         path = get_config_path()
-        open_in_file_manager(path)
+        open_in_file_manager(path, reveal=True)
 
     def reload_config(self) -> None:
         try:
