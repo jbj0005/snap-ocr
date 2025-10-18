@@ -83,6 +83,6 @@ def open_file(path: str) -> None:
     if sys.platform == "win32":
         os.startfile(path)  # type: ignore[attr-defined]
     elif sys.platform == "darwin":
-        subprocess.run(["open", path], check=False)
+        subprocess.run(["open", "-t", path], check=False)
     else:
         subprocess.run(["xdg-open", path], check=False)
