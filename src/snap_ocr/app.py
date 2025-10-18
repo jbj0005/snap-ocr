@@ -110,6 +110,10 @@ class App:
         # Avoid OS alerts; open log file/directory for user to inspect
         self.view_log_file()
 
+    def open_config_file(self) -> None:
+        path = get_config_path()
+        open_in_file_manager(path)
+
     def reload_config(self) -> None:
         try:
             new_cfg = load_or_create_config()

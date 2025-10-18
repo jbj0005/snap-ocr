@@ -52,6 +52,7 @@ class TrayManager:
             ),
             pystray.MenuItem("Open Images Folder", self._wrap(self.app.open_images_folder)),
             pystray.MenuItem("Open Text Folder", self._wrap(self.app.open_text_folder)),
+            pystray.MenuItem("Open Config File", self._wrap(self.app.open_config_file)),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem("Reload Config", self._wrap(self.app.reload_config)),
             pystray.MenuItem("View Log File…", self._wrap(self.app.view_log_file)),
