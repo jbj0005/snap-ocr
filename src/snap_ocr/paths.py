@@ -77,3 +77,12 @@ def open_in_file_manager(path: str, reveal: bool = False) -> None:
             target = os.path.dirname(path) or "."
         subprocess.run(["xdg-open", target], check=False)
 
+
+
+def open_file(path: str) -> None:
+    if sys.platform == "win32":
+        os.startfile(path)  # type: ignore[attr-defined]
+    elif sys.platform == "darwin":
+        subprocess.run(["open", path], check=False)
+    else:
+        subprocess.run(["xdg-open", path], check=False)

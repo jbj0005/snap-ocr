@@ -17,6 +17,7 @@ from .ocr import perform_ocr, build_tesseract_missing_message, build_ocr_failed_
 from .paths import (
     ensure_dir,
     get_log_file_path,
+    open_file,
     open_in_file_manager,
     get_logs_dir,
 )
@@ -112,7 +113,7 @@ class App:
 
     def open_config_file(self) -> None:
         path = get_config_path()
-        open_in_file_manager(path, reveal=True)
+        open_file(path)
 
     def reload_config(self) -> None:
         try:
