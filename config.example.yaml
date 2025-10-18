@@ -1,0 +1,34 @@
+# Example configuration for Snap OCR
+
+# Writable directories for outputs
+save_dir_images: "{{HOME}}/Pictures/snap-ocr"
+save_dir_text: "{{HOME}}/Documents/snap-ocr"
+
+# Filenames
+base_filename: screenshot
+consecutive_mode: false
+
+# Global hotkey (pynput syntax)
+hotkey: "<ctrl>+<shift>+s"
+
+# Image and OCR
+image_format: PNG
+ocr_lang: "eng"
+
+# Behavior
+notify_on_success: false
+debounce_ms: 500
+log_level: INFO
+
+# Optional: specify full path to tesseract binary if not on PATH
+# tesseract_cmd: "C:\\Program Files\\Tesseract-OCR\\tesseract.exe"
+
+# Capture mode and zones
+capture_mode: full  # full | region | fancyzones
+region:
+  left: 100
+  top: 100
+  width: 1280
+  height: 720
+fancyzones_prefer_under_cursor: true
+fancyzones_zone_index: 0

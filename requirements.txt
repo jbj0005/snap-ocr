@@ -1,0 +1,10 @@
+mss==9.0.1
+pynput==1.7.6
+Pillow==10.4.0
+pytesseract==0.3.10
+PyYAML==6.0.1
+platformdirs==4.2.2
+pystray==0.19.5
+plyer==2.1.0
+typing-extensions==4.12.2
+

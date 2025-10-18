@@ -1,0 +1,35 @@
+[project]
+name = "snap-ocr"
+version = "0.1.0"
+description = "Tray hotkey background screenshot + OCR utility (macOS/Windows)."
+authors = [{ name = "Your Name" }]
+requires-python = ">=3.10"
+readme = "README.md"
+dependencies = [
+    "mss==9.0.1",
+    "pynput==1.7.6",
+    "Pillow==10.4.0",
+    "pytesseract==0.3.10",
+    "PyYAML==6.0.1",
+    "platformdirs==4.2.2",
+    "pystray==0.19.5",
+    "plyer==2.1.0",
+    "typing-extensions==4.12.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pyinstaller>=6.0",
+]
+
+[project.urls]
+homepage = "https://example.com"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[project.entry-points."gui_scripts"]
+snap-ocr = "snap_ocr.__main__:main"
