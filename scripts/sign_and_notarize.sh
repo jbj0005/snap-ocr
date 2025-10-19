@@ -3,7 +3,7 @@ set -euo pipefail
 
 APP="dist/Snap OCR.app"
 ZIP="dist/Snap_OCR.zip"
-IDENTITY="Developer ID Application: YOUR NAME (TEAMID)"
+IDENTITY="Brandon"dved-npnj-lvue-tdfl
 PROFILE="notarytool-profile"
 ENTITLEMENTS="packaging/entitlements.plist"
 

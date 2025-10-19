@@ -3,7 +3,8 @@ from __future__ import annotations
 import json
 import os
 import sys
-from typing import Dict, List, Optional, Tuple
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 
 from pynput import mouse
 import mss
@@ -79,12 +80,30 @@ def _get_cursor_pos() -> Tuple[int, int]:
         return (0, 0)
 
 
-def _get_monitor_under_point(x: int, y: int) -> Optional[Dict[str, int]]:
+def _get_monitor_under_point_with_index(x: int, y: int) -> Optional[Tuple[int, Dict[str, int]]]:
     with mss.mss() as sct:
-        for mon in sct.monitors[1:]:  # skip virtual at index 0
-            if x >= mon["left"] and y >= mon["top"] and x < mon["left"] + mon["width"] and y < mon["top"] + mon["height"]:
-                return mon
-        return sct.monitors[1] if len(sct.monitors) > 1 else sct.monitors[0]
+        monitors = sct.monitors
+        if not monitors:
+            return None
+        if len(monitors) > 1:
+            physical = list(enumerate(monitors[1:], start=0))
+        else:
+            physical = [(0, monitors[0])]
+        for idx, mon in physical:
+            left = int(mon.get("left", 0))
+            top = int(mon.get("top", 0))
+            width = int(mon.get("width", 0))
+            height = int(mon.get("height", 0))
+            if x >= left and y >= top and x < left + width and y < top + height:
+                return idx, mon
+        return physical[0] if physical else None
+
+
+def _get_monitor_under_point(x: int, y: int) -> Optional[Dict[str, int]]:
+    info = _get_monitor_under_point_with_index(x, y)
+    if info is None:
+        return None
+    return info[1]
 
 
 def _fz_dir() -> str:
@@ -93,7 +112,7 @@ def _fz_dir() -> str:
     return os.path.join(os.environ.get("LOCALAPPDATA", ""), "Microsoft", "PowerToys", "FancyZones")
 
 
-def _load_json(path: str) -> Optional[Dict]:
+def _load_json(path: str) -> Optional[Any]:
     try:
         if os.path.exists(path):
             with open(path, "r", encoding="utf-8") as f:
@@ -227,6 +246,134 @@ def get_fancyzones_region(prefer_under_cursor: bool = True, zone_index: int = 0)
     return {
         "left": mon["left"] + z["x"],
         "top": mon["top"] + z["y"],
+        "width": z["width"],
+        "height": z["height"],
+    }
+
+
+def _macsyzones_dir() -> Path:
+    return Path.home() / "Library" / "Application Support" / "MeowingCat.MacsyZones"
+
+
+def _load_macsyzones_layouts(base: Path) -> Dict[str, List[Dict[str, float]]]:
+    layouts: Dict[str, List[Dict[str, float]]] = {}
+    data = _load_json(str(base / "UserLayouts.json"))
+    if isinstance(data, dict):
+        for name, zones in data.items():
+            if not isinstance(zones, list):
+                continue
+            parsed: List[Dict[str, float]] = []
+            for zone in zones:
+                if not isinstance(zone, dict):
+                    continue
+                try:
+                    xp = float(zone.get("xPercentage", zone.get("x", 0.0)) or 0.0)
+                    yp = float(zone.get("yPercentage", zone.get("y", 0.0)) or 0.0)
+                    wp = float(zone.get("widthPercentage", zone.get("width", 0.0)) or 0.0)
+                    hp = float(zone.get("heightPercentage", zone.get("height", 0.0)) or 0.0)
+                except (TypeError, ValueError):
+                    continue
+                parsed.append({"x": xp, "y": yp, "width": wp, "height": hp})
+            if parsed:
+                layouts[name] = parsed
+    return layouts
+
+
+def _load_macsyzones_screen_layouts(base: Path) -> Dict[int, str]:
+    mapping: Dict[int, str] = {}
+    data = _load_json(str(base / "SpaceLayoutPreferences.json"))
+    if isinstance(data, list):
+        it = iter(data)
+        for meta, layout_name in zip(it, it):
+            if not isinstance(meta, dict) or not isinstance(layout_name, str):
+                continue
+            screen_val = meta.get("screen")
+            if isinstance(screen_val, (int, float)):
+                mapping[int(screen_val)] = layout_name
+    return mapping
+
+
+def get_macsyzones_region(
+    prefer_under_cursor: bool = True,
+    zone_index: int = 0,
+    layout_name: Optional[str] = None,
+) -> Optional[Dict[str, int]]:
+    if sys.platform != "darwin":
+        raise SnapOcrError(ErrorCode.OTHER, "MacsyZones capture is only available on macOS.")
+
+    cursor_x, cursor_y = _get_cursor_pos()
+    monitor_info = _get_monitor_under_point_with_index(cursor_x, cursor_y)
+    if not monitor_info:
+        return None
+    screen_index, monitor = monitor_info
+
+    width = int(monitor.get("width", 0))
+    height = int(monitor.get("height", 0))
+    if width <= 0 or height <= 0:
+        return None
+
+    base = _macsyzones_dir()
+    if not base.exists():
+        return None
+
+    layouts = _load_macsyzones_layouts(base)
+    if not layouts:
+        return None
+
+    selected_layout_name: Optional[str] = layout_name
+    if not selected_layout_name:
+        screen_layouts = _load_macsyzones_screen_layouts(base)
+        selected_layout_name = screen_layouts.get(screen_index)
+
+    if not selected_layout_name or selected_layout_name not in layouts:
+        if "Default" in layouts:
+            selected_layout_name = "Default"
+        else:
+            selected_layout_name = next(iter(layouts.keys()))
+
+    zones = layouts.get(selected_layout_name)
+    if not zones:
+        return None
+
+    mon_left = int(monitor.get("left", 0))
+    mon_top = int(monitor.get("top", 0))
+    scaled: List[Dict[str, int]] = []
+    for zone in zones:
+        try:
+            zx = float(zone.get("x", 0.0))
+            zy = float(zone.get("y", 0.0))
+            zw = float(zone.get("width", 0.0))
+            zh = float(zone.get("height", 0.0))
+        except (TypeError, ValueError):
+            continue
+        zx = max(0.0, min(1.0, zx))
+        zy = max(0.0, min(1.0, zy))
+        zw = max(0.0, min(1.0, zw))
+        zh = max(0.0, min(1.0, zh))
+        left = mon_left + int(round(zx * width))
+        top = mon_top + int(round(zy * height))
+        w_px = max(1, int(round(zw * width)))
+        h_px = max(1, int(round(zh * height)))
+        scaled.append({"x": left, "y": top, "width": w_px, "height": h_px})
+
+    if not scaled:
+        return None
+
+    if prefer_under_cursor:
+        for z in scaled:
+            if cursor_x >= z["x"] and cursor_y >= z["y"] and cursor_x < z["x"] + z["width"] and cursor_y < z["y"] + z["height"]:
+                return {
+                    "left": z["x"],
+                    "top": z["y"],
+                    "width": z["width"],
+                    "height": z["height"],
+                }
+
+    idx = zone_index if 0 <= zone_index < len(scaled) else (len(scaled) - 1)
+    z = scaled[idx]
+    return {
+        "left": z["x"],
+        "top": z["y"],
         "width": z["width"],
         "height": z["height"],
     }

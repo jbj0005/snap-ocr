@@ -5,8 +5,10 @@ save_dir_images: "{{HOME}}/Pictures/snap-ocr"
 save_dir_text: "{{HOME}}/Documents/snap-ocr"
 
 # Filenames
-base_filename: screenshot
-consecutive_mode: false
+base_filename: snap_timestamp
+filename_pattern: "{base}_{timestamp}"
+# Allowed placeholders: {base}, {timestamp}
+overwrite_mode: false  # true = delete previous capture files before saving new ones
 
 # Global hotkey (pynput syntax)
 hotkey: "<ctrl>+<shift>+s"
@@ -24,7 +26,7 @@ log_level: INFO
 # tesseract_cmd: "C:\\Program Files\\Tesseract-OCR\\tesseract.exe"
 
 # Capture mode and zones
-capture_mode: full  # full | region | fancyzones
+capture_mode: full  # full | region | fancyzones | macsyzones
 region:
   left: 100
   top: 100
@@ -32,3 +34,6 @@ region:
   height: 720
 fancyzones_prefer_under_cursor: true
 fancyzones_zone_index: 0
+macsyzones_prefer_under_cursor: true  # macOS only
+macsyzones_zone_index: 0             # macOS only
+# macsyzones_layout_name: "Default"  # optional override (macOS)

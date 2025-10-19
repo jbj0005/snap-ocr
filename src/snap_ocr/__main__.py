@@ -5,7 +5,7 @@ Overview
 - Cross-platform background utility for macOS 12+ and Windows 10/11.
 - Global hotkey (Ctrl+Shift+S by default) takes a full-screen screenshot (all monitors), performs OCR, and saves PNG + TXT.
 - Stays in the system tray; no windows or focus stealing.
-- Debounced triggers; Consecutive Mode overwrites files with fixed base name.
+- Debounced triggers; Overwrite Mode keeps only the most recent capture (previous files are deleted).
 - YAML config with sensible defaults; logs with rotation; robust error surfaces and notifications.
 
 Key Features
@@ -13,18 +13,14 @@ Key Features
 - Screenshot via mss across all displays (monitor 0 virtual screen).
 - OCR via pytesseract; clear errors if Tesseract missing or language packs absent.
 - Atomic writes for PNG and TXT.
-- Tray actions: Take Screenshot, Toggle Consecutive Mode, Open Folders, Reload Config, View Log, View Last Error, Quit.
+- Tray actions: Take Screenshot, Toggle Overwrite Mode, Open Folders, Reload Config, View Log, View Last Error, Quit.
 - Notifications via plyer; gracefully degrades if notifications unavailable.
 - No network traffic; screenshots and OCR outputs stay local.
 
 Installation (Python 3.10+)
-1) Create and activate a virtual environment (recommended)
-   - Windows (PowerShell): `py -3.10 -m venv .venv && .\\.venv\\Scripts\\Activate.ps1`
-   - macOS: `python3.10 -m venv .venv && source .venv/bin/activate`
-2) Install dependencies
-   - `pip install -r requirements.txt`
-   - or `pip install .` from project root (pyproject.toml)
-3) Install Tesseract OCR
+1) Preferred: `pipx install .` from the project root (adds `snap-ocr` to PATH).
+   - Alternative: create and activate a venv (`python -m venv .venv`), then `pip install -r requirements.txt` and `pip install -e .`.
+2) Install Tesseract OCR
    - macOS (Homebrew):
      - `brew install tesseract`
      - Optional languages: `brew install tesseract-lang`
@@ -50,15 +46,7 @@ Windows Notes
 Usage
 - Start: `python -m snap_ocr` (tray icon appears).
 - Trigger: Press Ctrl+Shift+S anywhere; PNG + TXT saved.
-- Tray menu:
-  - Take Screenshot Now
-  - Toggle Consecutive Mode (✓/✗)
-  - Open Images Folder
-  - Open Text Folder
-  - Reload Config
-  - View Log File…
-  - View Last Error…
-  - Quit
+- Tray menu: Take Screenshot, toggle Overwrite Mode, open output folders, reload the config, view logs, or quit.
 
 Troubleshooting Matrix
 - Hotkey doesn’t fire on macOS → Accessibility permission needed.
@@ -96,7 +84,7 @@ Packaging
 Acceptance Tests (Manual)
 - Hotkey triggers screenshot while focusing another app → PNG+TXT saved correctly.
 - Normal mode: filenames with timestamp suffix (YYYYMMDD_HHMMSS).
-- Consecutive mode: constant filenames overridden across multiple presses.
+- Overwrite mode: constant filenames overridden across multiple presses.
 - OCR output non-empty for a window with visible text.
 - macOS missing permissions: actionable guidance appears; after granting and relaunching app, works.
 - Debounce prevents duplicates from rapid presses (500 ms default).
@@ -110,8 +98,9 @@ import time
 from typing import Optional, Sequence
 
 from .app import App, Job
-from .config import load_or_create_config, save_config_if_first_run
+from .config import ConfigValidationError, load_or_create_config, save_config_if_first_run
 from .paths import get_config_path, open_in_file_manager
+from .perm_bootstrap import bootstrap_permissions
 
 
 def _parse_args(argv: Optional[Sequence[str]]) -> argparse.Namespace:
@@ -144,6 +133,15 @@ def _ensure_config() -> str:
     return get_config_path()
 
 
+def _print_config_error(message: str) -> None:
+    path = get_config_path()
+    print(
+        f"Configuration error: {message}\n"
+        f"Fix: Edit {path} (use 'snap-ocr --open-config') to correct the value, then retry.",
+        file=sys.stderr,
+    )
+
+
 def _capture_once() -> int:
     app = App()
     try:
@@ -164,18 +162,29 @@ def _capture_once() -> int:
 
 def main(argv: Optional[Sequence[str]] = None) -> None:
     args = _parse_args(argv)
-    bootstrap_permissions()
-    if args.show_config_path:
-        print(_ensure_config())
-        return
-    if args.open_config:
-        open_in_file_manager(_ensure_config())
-        return
-    if args.capture_once:
-        raise SystemExit(_capture_once())
+    try:
+        bootstrap_permissions()
+        if args.show_config_path:
+            print(_ensure_config())
+            return
+        if args.open_config:
+            open_in_file_manager(_ensure_config())
+            return
+        if args.capture_once:
+            raise SystemExit(_capture_once())
 
-    app = App()
-    app.run()
+        app = App()
+        app.run()
+    except ConfigValidationError as exc:
+        _print_config_error(str(exc))
+        config_path = get_config_path()
+        if args.show_config_path:
+            print(config_path)
+            return
+        if args.open_config:
+            open_in_file_manager(config_path)
+            return
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":

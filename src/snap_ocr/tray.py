@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import sys
 import threading
 from pathlib import Path
 from typing import Callable, Optional
@@ -103,21 +104,31 @@ class TrayManager:
     def __init__(self, app: "App") -> None:
         self.app = app
         self._icon = pystray.Icon("Snap OCR", icon=_make_icon(), title="Snap OCR")
+
+        capture_items = [
+            pystray.MenuItem("Full", self._wrap(lambda: self.app.set_capture_mode("full")), checked=lambda _: getattr(self.app, "capture_mode", "full") == "full"),
+            pystray.MenuItem("Region", self._wrap(lambda: self.app.set_capture_mode("region")), checked=lambda _: getattr(self.app, "capture_mode", "full") == "region"),
+        ]
+        if sys.platform == "win32":
+            capture_items.append(
+                pystray.MenuItem("FancyZones", self._wrap(lambda: self.app.set_capture_mode("fancyzones")), checked=lambda _: getattr(self.app, "capture_mode", "full") == "fancyzones")
+            )
+        elif sys.platform == "darwin":
+            capture_items.append(
+                pystray.MenuItem("MacsyZones", self._wrap(lambda: self.app.set_capture_mode("macsyzones")), checked=lambda _: getattr(self.app, "capture_mode", "full") == "macsyzones")
+            )
+
         self._icon.menu = pystray.Menu(
             pystray.MenuItem("Take Screenshot Now", self._wrap(self.app.take_screenshot_now)),
             pystray.MenuItem(
                 "Capture Mode",
-                pystray.Menu(
-                    pystray.MenuItem("Full", self._wrap(lambda: self.app.set_capture_mode("full")), checked=lambda _: getattr(self.app, "capture_mode", "full") == "full"),
-                    pystray.MenuItem("Region", self._wrap(lambda: self.app.set_capture_mode("region")), checked=lambda _: getattr(self.app, "capture_mode", "full") == "region"),
-                    pystray.MenuItem("FancyZones", self._wrap(lambda: self.app.set_capture_mode("fancyzones")), checked=lambda _: getattr(self.app, "capture_mode", "full") == "fancyzones"),
-                ),
+                pystray.Menu(*capture_items),
             ),
             pystray.MenuItem("Pick Region…", self._wrap(self.app.pick_region, run_async=False)),
             pystray.MenuItem(
-                "Consecutive Mode",
-                self._wrap(self.app.toggle_consecutive_mode),
-                checked=lambda item: self.app.consecutive_mode,
+                "Overwrite Mode",
+                self._wrap(self.app.toggle_overwrite_mode),
+                checked=lambda item: getattr(self.app, "overwrite_mode", False),
             ),
             pystray.MenuItem("Open Images Folder", self._wrap(self.app.open_images_folder)),
             pystray.MenuItem("Open Text Folder", self._wrap(self.app.open_text_folder)),

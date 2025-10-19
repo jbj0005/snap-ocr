@@ -9,7 +9,7 @@ import time
 from dataclasses import dataclass
 from typing import Optional, Tuple
 
-from .config import Config, load_or_create_config, save_config_if_first_run
+from .config import Config, ConfigValidationError, load_or_create_config, save_config_if_first_run
 from .errors import ErrorCode, SnapOcrError
 from .hotkey import HotkeyManager
 from .logging_conf import configure_logging
@@ -47,7 +47,10 @@ class App:
         self.last_trigger_ts: float = 0.0
         self.last_error_message: Optional[str] = None
         self._stopping = threading.Event()
-        self.consecutive_mode = self.config.consecutive_mode
+        self.overwrite_mode = self.config.overwrite_mode
+        self.consecutive_mode = self.overwrite_mode  # legacy alias
+        setattr(self.config, "consecutive_mode", self.overwrite_mode)  # legacy attribute for compatibility
+        self.last_saved_paths: Optional[Tuple[str, str]] = None
         self.capture_mode = getattr(self.config, "capture_mode", "full")
         self.worker_queue: queue.Queue[Optional[Job]] = queue.Queue()
 
@@ -73,12 +76,18 @@ class App:
             return
         self._enqueue_job("tray")
 
-    def toggle_consecutive_mode(self) -> None:
-        self.consecutive_mode = not self.consecutive_mode
-        self.logger.info("Consecutive Mode set to %s", self.consecutive_mode)
+    def toggle_overwrite_mode(self) -> None:
+        self.overwrite_mode = not self.overwrite_mode
+        self.consecutive_mode = self.overwrite_mode  # legacy alias
+        self.config.overwrite_mode = self.overwrite_mode
+        setattr(self.config, "consecutive_mode", self.overwrite_mode)  # keep legacy attribute updated
+        self.logger.info("Overwrite Mode set to %s", self.overwrite_mode)
+
+    def toggle_consecutive_mode(self) -> None:  # pragma: no cover - legacy alias
+        self.toggle_overwrite_mode()
 
     def set_capture_mode(self, mode: str) -> None:
-        if mode in ("full", "region", "fancyzones"):
+        if mode in ("full", "region", "fancyzones", "macsyzones"):
             self.capture_mode = mode
             self.logger.info("Capture mode set to %s", mode)
 
@@ -122,6 +131,11 @@ class App:
             # Apply updates
             self._apply_config(new_cfg)
             self._notify("Snap OCR", "Configuration reloaded.")
+        except ConfigValidationError as e:
+            msg = f"{e}\nFix the configuration at {get_config_path()} and try again."
+            self._record_error(
+                SnapOcrError(ErrorCode.CONFIG_INVALID, msg, e)
+            )
         except Exception as e:
             self._record_error(
                 SnapOcrError(ErrorCode.CONFIG_INVALID, f"Failed to reload config: {e}", e)
@@ -164,8 +178,12 @@ class App:
         if new_cfg.hotkey != self.config.hotkey:
             self.hotkey.update_hotkey(new_cfg.hotkey)
 
-        # Keep current runtime consecutive mode; update default base on new config's flag
+        # Keep current runtime overwrite mode; update default based on new config's flag
         self.config = new_cfg
+        self.overwrite_mode = self.config.overwrite_mode
+        self.consecutive_mode = self.overwrite_mode
+        setattr(self.config, "consecutive_mode", self.overwrite_mode)
+        self.last_saved_paths = None
 
     def _enqueue_job(self, reason: str) -> None:
         self.last_trigger_ts = time.monotonic()
@@ -218,6 +236,20 @@ class App:
                 if not region:
                     raise SnapOcrError(ErrorCode.CAPTURE_FAILED, "No FancyZones region available (cursor not in zone?)")
                 img = capture_region(region["left"], region["top"], region["width"], region["height"])
+            elif mode == "macsyzones":
+                from .region_capture import get_macsyzones_region
+
+                region = get_macsyzones_region(
+                    prefer_under_cursor=getattr(self.config, "macsyzones_prefer_under_cursor", True),
+                    zone_index=getattr(self.config, "macsyzones_zone_index", 0),
+                    layout_name=getattr(self.config, "macsyzones_layout_name", None),
+                )
+                if not region:
+                    raise SnapOcrError(
+                        ErrorCode.CAPTURE_FAILED,
+                        "No MacsyZones region available. Ensure MacsyZones is installed and a layout is assigned to this display.",
+                    )
+                img = capture_region(region["left"], region["top"], region["width"], region["height"])
             else:
                 img = capture_full_screenshot()
         except SnapOcrError as se:
@@ -230,14 +262,35 @@ class App:
             return
 
         # File naming
-        base = cfg.base_filename
-        if self.consecutive_mode:
-            stem = base
-        else:
-            stem = f"{base}_{build_timestamped_name()}"
+        pattern = getattr(cfg, "filename_pattern", "{base}_{timestamp}") or "{base}_{timestamp}"
+        timestamp_token = build_timestamped_name()
+        context = {
+            "base": cfg.base_filename,
+            "timestamp": timestamp_token,
+        }
+        try:
+            stem_raw = pattern.format(**context)
+        except KeyError as exc:
+            self._record_error(
+                SnapOcrError(
+                    ErrorCode.CONFIG_INVALID,
+                    f"filename_pattern references unknown placeholder: {exc}",
+                    exc,
+                )
+            )
+            return
+        except Exception as exc:
+            self._record_error(
+                SnapOcrError(ErrorCode.CONFIG_INVALID, f"Invalid filename_pattern: {exc}", exc)
+            )
+            return
+
+        stem = stem_raw.strip() or f"{cfg.base_filename}_{timestamp_token}"
 
         img_path = os.path.join(cfg.save_dir_images, f"{stem}.png")
         txt_path = os.path.join(cfg.save_dir_text, f"{stem}.txt")
+
+        self._clear_previous_outputs_if_needed()
 
         # Save image atomically
         try:
@@ -288,6 +341,8 @@ class App:
         if self.config.notify_on_success:
             self._notify("Snap OCR", f"Saved screenshot + OCR:\n{img_path}\n{txt_path}")
 
+        self.last_saved_paths = (img_path, txt_path)
+
         return img_path, txt_path
 
     def _record_error(self, err: SnapOcrError) -> None:
@@ -296,6 +351,23 @@ class App:
         self.last_error_message = msg
         self.logger.error(msg)
         self._notify("Snap OCR Error", msg)
+
+    def _clear_previous_outputs_if_needed(self) -> None:
+        if not self.overwrite_mode:
+            return
+        last = self.last_saved_paths
+        if not last:
+            return
+        for path in last:
+            if not path:
+                continue
+            try:
+                if os.path.exists(path):
+                    os.remove(path)
+                    self.logger.debug("Removed previous output: %s", path)
+            except Exception as exc:
+                self.logger.warning("Failed to remove previous output %s: %s", path, exc)
+        self.last_saved_paths = None
 
     def _notify(self, title: str, message: str) -> None:
         # All OS notifications are disabled to keep the tool distraction-free.
