@@ -97,10 +97,10 @@ import sys
 import time
 from typing import Optional, Sequence
 
-from .app import App, Job
-from .config import ConfigValidationError, load_or_create_config, save_config_if_first_run
-from .paths import get_config_path, open_in_file_manager
-from .perm_bootstrap import bootstrap_permissions
+from snap_ocr.app import App, Job
+from snap_ocr.config import ConfigValidationError, load_or_create_config, save_config_if_first_run
+from snap_ocr.paths import get_config_path, open_in_file_manager
+from snap_ocr.perm_bootstrap import bootstrap_permissions
 
 
 def _parse_args(argv: Optional[Sequence[str]]) -> argparse.Namespace:

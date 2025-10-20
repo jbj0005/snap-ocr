@@ -138,7 +138,7 @@ class TrayManager:
             pystray.MenuItem("View Log File…", self._wrap(self.app.view_log_file)),
             pystray.MenuItem("View Last Error…", self._wrap(self.app.view_last_error)),
             pystray.Menu.SEPARATOR,
-            pystray.MenuItem("Quit", self._wrap(self.app.quit)),
+            pystray.MenuItem("Quit", self._wrap(self.app.quit, run_async=False)),
         )
 
     def _wrap(self, func: Callable[[], None], run_async: bool = True) -> Callable:

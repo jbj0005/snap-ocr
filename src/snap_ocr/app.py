@@ -249,7 +249,18 @@ class App:
                         ErrorCode.CAPTURE_FAILED,
                         "No MacsyZones region available. Ensure MacsyZones is installed and a layout is assigned to this display.",
                     )
+                logger.debug(
+                    "MacsyZones resolved region: left=%s top=%s width=%s height=%s (layout=%s prefer=%s index=%s)",
+                    region.get("left"),
+                    region.get("top"),
+                    region.get("width"),
+                    region.get("height"),
+                    getattr(self.config, "macsyzones_layout_name", None),
+                    getattr(self.config, "macsyzones_prefer_under_cursor", True),
+                    getattr(self.config, "macsyzones_zone_index", 0),
+                )
                 img = capture_region(region["left"], region["top"], region["width"], region["height"])
+                logger.debug("Captured region image size: %s×%s", *img.size)
             else:
                 img = capture_full_screenshot()
         except SnapOcrError as se:

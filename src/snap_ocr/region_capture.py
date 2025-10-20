@@ -263,7 +263,8 @@ def _load_macsyzones_layouts(base: Path) -> Dict[str, List[Dict[str, float]]]:
             if not isinstance(zones, list):
                 continue
             parsed: List[Dict[str, float]] = []
-            for zone in zones:
+            sortable: List[Tuple[Tuple[int, float, float, int], Dict[str, float]]] = []
+            for idx, zone in enumerate(zones):
                 if not isinstance(zone, dict):
                     continue
                 try:
@@ -273,7 +274,16 @@ def _load_macsyzones_layouts(base: Path) -> Dict[str, List[Dict[str, float]]]:
                     hp = float(zone.get("heightPercentage", zone.get("height", 0.0)) or 0.0)
                 except (TypeError, ValueError):
                     continue
-                parsed.append({"x": xp, "y": yp, "width": wp, "height": hp})
+                entry = {"x": xp, "y": yp, "width": wp, "height": hp}
+                number = zone.get("number")
+                if isinstance(number, (int, float)):
+                    sort_key = (0, float(number), xp, yp)
+                else:
+                    sort_key = (1, yp, xp, idx)
+                sortable.append((sort_key, entry))
+            if sortable:
+                sortable.sort(key=lambda item: item[0])
+                parsed = [entry for _, entry in sortable]
             if parsed:
                 layouts[name] = parsed
     return layouts
@@ -351,7 +361,7 @@ def get_macsyzones_region(
         zw = max(0.0, min(1.0, zw))
         zh = max(0.0, min(1.0, zh))
         left = mon_left + int(round(zx * width))
-        top = mon_top + int(round(zy * height))
+        top = mon_top + int(round((1.0 - (zy + zh)) * height))
         w_px = max(1, int(round(zw * width)))
         h_px = max(1, int(round(zh * height)))
         scaled.append({"x": left, "y": top, "width": w_px, "height": h_px})

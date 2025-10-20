@@ -79,7 +79,7 @@ Validation errors surface immediately with the file path and a suggested fix. Af
 
 - Grant Screen Recording + Accessibility (and Input Monitoring if prompted) to the Python host or packaged app.
 - Optional auto-start: place a `LaunchAgent` pointing to your `pipx` interpreter, then `launchctl load` it.
-- MacsyZones capture maps to layouts created by the third-party MacsyZones utility, matching the zone under the current cursor.
+- **MacsyZones**: Snap OCR reads layouts from `~/Library/Application Support/MeowingCat.MacsyZones/UserLayouts.json`, honoring the zone numbers shown in the MacsyZones editor (1 = top-left, 2 = bottom-left, 3 = top-right, 4 = bottom-right). Captures are taken in raw pixels, so on Retina displays the saved PNG dimensions are 2× the values displayed in MacsyZones; the crop area is identical.
 
 ### Windows
 

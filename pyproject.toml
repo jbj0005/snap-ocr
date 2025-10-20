@@ -1,6 +1,6 @@
 [project]
 name = "snap-ocr"
-version = "0.2.0"
+version = "0.2.1"
 description = "Background tray utility that screenshots and OCRs in one hotkey press."
 authors = [{ name = "Brandon Johnson" }]
 requires-python = ">=3.10"
