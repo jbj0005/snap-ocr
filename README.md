@@ -10,8 +10,17 @@ For a fully detailed reference (including troubleshooting matrices) see `src/sna
 - Full screen, fixed region, Windows FancyZones, or macOS MacsyZones capture modes.
 - Timestamped filenames with optional overwrite mode that keeps only the most recent capture.
 - Background OCR via `pytesseract`, atomic writes, and user-configurable save locations.
+- Smart pre-processing (grayscale + contrast boost) for sharper OCR results on dense exam layouts.
 - Tray controls for quick actions (Take Screenshot, Toggle Overwrite, open folders, reload config, view logs, quit).
 - Zero network access; outputs and logs stay on your machine.
+
+## Release Highlights
+
+### v0.3.0
+
+- Fixed MacsyZones capture so repositioned layouts map 1:1 with on-screen zones.
+- Improved OCR fidelity by pre-processing captures and normalizing multi-choice labels (no more duplicated letters).
+- Added version metadata and refreshed install instructions for packaged and PyPI deployments.
 
 ## Prerequisites
 
