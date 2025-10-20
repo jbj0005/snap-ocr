@@ -103,7 +103,11 @@ def _make_icon(size: int = 32) -> Image.Image:
 class TrayManager:
     def __init__(self, app: "App") -> None:
         self.app = app
-        self._icon = pystray.Icon("Snap OCR", icon=_make_icon(), title="Snap OCR")
+        base_icon = _make_icon().convert("RGBA")
+        self._base_icon = base_icon
+        self._icon = pystray.Icon("Snap OCR", icon=base_icon.copy(), title="Snap OCR")
+        self._icon_lock = threading.Lock()
+        self._flash_timer: Optional[threading.Timer] = None
 
         capture_items = [
             pystray.MenuItem("Full", self._wrap(lambda: self.app.set_capture_mode("full")), checked=lambda _: getattr(self.app, "capture_mode", "full") == "full"),
@@ -149,8 +153,80 @@ class TrayManager:
                 func()
         return _inner
 
+    def _restore_base_icon(self) -> None:
+        with self._icon_lock:
+            timer = self._flash_timer
+            self._flash_timer = None
+            if timer:
+                timer.cancel()
+            try:
+                self._icon.icon = self._base_icon.copy()
+            except Exception:
+                pass
+
+    def _flash_icon(self, image: Image.Image, duration: float) -> None:
+        with self._icon_lock:
+            if self._flash_timer:
+                self._flash_timer.cancel()
+                self._flash_timer = None
+            try:
+                self._icon.icon = image.copy()
+            except Exception:
+                return
+
+            if duration <= 0:
+                return
+
+            timer = threading.Timer(duration, self._restore_base_icon)
+            timer.daemon = True
+            self._flash_timer = timer
+            timer.start()
+
+    def _build_success_icon(self) -> Image.Image:
+        base = self._base_icon.copy()
+        if base.mode != "RGBA":
+            base = base.convert("RGBA")
+        draw = ImageDraw.Draw(base)
+        width, height = base.size
+        diameter = max(6, width // 3)
+        margin = max(2, width // 12)
+        left = width - diameter - margin
+        top = height - diameter - margin
+        right = width - margin
+        bottom = height - margin
+
+        border_box = (left - 1, top - 1, right + 1, bottom + 1)
+        draw.ellipse(border_box, fill=(240, 240, 240, 255))
+        draw.ellipse((left, top, right, bottom), fill=(67, 160, 71, 255))
+
+        check_width = max(2, diameter // 4)
+        p1 = (int(left + diameter * 0.28), int(bottom - diameter * 0.45))
+        p2 = (int(left + diameter * 0.48), int(bottom - diameter * 0.2))
+        p3 = (int(right - diameter * 0.2), int(top + diameter * 0.25))
+        draw.line([p1, p2, p3], fill=(255, 255, 255, 255), width=check_width)
+
+        return base
+
+    def flash_success(self, duration: float = 2.5) -> None:
+        try:
+            icon = self._build_success_icon()
+        except Exception:
+            return
+        self._flash_icon(icon, duration)
+
     def run(self) -> None:
-        self._icon.run()
+        try:
+            self._icon.run()
+        except Exception as exc:
+            try:
+                if getattr(self.app, "logger", None):
+                    self.app.logger.exception("Tray icon loop crashed", exc_info=exc)
+                else:
+                    print(f"Tray icon loop crashed: {exc}", file=sys.stderr)
+            except Exception:
+                print(f"Tray icon loop crashed: {exc}", file=sys.stderr)
+            raise
 
     def stop(self) -> None:
+        self._restore_base_icon()
         self._icon.stop()

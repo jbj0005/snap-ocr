@@ -12,9 +12,15 @@ For a fully detailed reference (including troubleshooting matrices) see `src/sna
 - Background OCR via `pytesseract`, atomic writes, and user-configurable save locations.
 - Smart pre-processing (grayscale + contrast boost) for sharper OCR results on dense exam layouts.
 - Tray controls for quick actions (Take Screenshot, Toggle Overwrite, open folders, reload config, view logs, quit).
+- Tray icon flashes a green check badge after verifying the PNG/TXT pair landed in your save folders.
 - Zero network access; outputs and logs stay on your machine.
 
 ## Release Highlights
+
+### v0.3.1
+
+- Added a success badge overlay on the tray icon so you know the screenshot + OCR files are on disk without leaving your workflow.
+- Updated the macOS build script with an `--install` flag that syncs the `.app` into `/Applications` (or falls back to `~/Applications`) automatically, keeping Spotlight pointed at the latest build.
 
 ### v0.3.0
 
@@ -99,7 +105,7 @@ Validation errors surface immediately with the file path and a suggested fix. Af
 ## Packaging (macOS)
 
 1. `pipx install pyinstaller` (or `python -m pip install pyinstaller`).
-2. Run `scripts/build_mac_app.sh` to generate `dist/Snap OCR.app` (automatically converts the icon to `.icns`).
+2. Run `scripts/build_mac_app.sh` to generate `dist/Snap OCR.app` (automatically converts the icon to `.icns`). Add `--install` to copy the bundle into `/Applications` (falls back to `~/Applications` if permissions are denied) so Spotlight sees the latest build without manual copying.
 3. Update `scripts/sign_and_notarize.sh` with your Developer ID and notarytool profile, then execute it to sign/notarize/staple the bundle.
 4. Launch the notarised app once to trigger the permission prompts.
 

@@ -353,6 +353,12 @@ class App:
             self._notify("Snap OCR", f"Saved screenshot + OCR:\n{img_path}\n{txt_path}")
 
         self.last_saved_paths = (img_path, txt_path)
+        if self.tray is not None:
+            try:
+                if os.path.isfile(img_path) and os.path.isfile(txt_path):
+                    self.tray.flash_success()
+            except Exception as exc:
+                logger.debug("Failed to flash tray success icon: %s", exc)
 
         return img_path, txt_path
 
